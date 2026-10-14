@@ -1,0 +1,52 @@
+name: Extract website source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "money-well-spent-complete-source.zip"
+      - ".github/workflows/extract-website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract website files to repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/site-source
+          unzip -q money-well-spent-complete-source.zip -d /tmp/site-source
+          index_file="$(find /tmp/site-source -type f -iname 'index.html' -print -quit)"
+          if [ -z "$index_file" ]; then
+            echo "Could not find index.html inside the source ZIP."
+            find /tmp/site-source -maxdepth 3 -type f -print
+            exit 1
+          fi
+          source_dir="$(dirname "$index_file")"
+          cp -a "$source_dir"/. .
+          test -f index.html || test -f Index.html
+          rm -f deployment-test.txt
+
+      - name: Commit extracted website files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No extracted website changes to commit."
+            exit 0
+          fi
+          git commit -m "Extract website source for Vercel deployment"
+          git push
