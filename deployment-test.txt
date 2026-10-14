@@ -1,0 +1,1 @@
+Deployment test: if this commit triggers Vercel, automatic Git deployments are working. This file can be removed after verification.
